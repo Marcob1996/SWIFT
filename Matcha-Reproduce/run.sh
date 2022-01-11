@@ -15,6 +15,7 @@
 #SBATCH --error Logs/%x_%A_%a.log
 
 #module load python
+module load cuda
 module load openmpi
 
-mpirun -np 8 python train_mpi.py --description Matcha --resSize 50 --randomSeed 9001 --datasetRoot ./data --budget 0.5 --outputFolder Output --bs 64 --epoch 1 --name trial
+mpirun -np 8 python train_mpi.py --description Matcha --resSize 50 --randomSeed 9001 --datasetRoot ./data --budget 0.5 --outputFolder Output3 --bs 64 --epoch 1 --name trial

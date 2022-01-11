@@ -175,14 +175,14 @@ class GraphProcessor(object):
 
 class FixedProcessor(GraphProcessor):
     """ wrapper for fixed communication graph """
-
+    print("proc 1")
     def __init__(self, base_graph, commBudget, rank, size, iterations, issubgraph):
         super(FixedProcessor, self).__init__(base_graph, commBudget, rank, size, iterations, issubgraph)
         self.probabilities = self.getProbability()
         self.neighbor_weight = self.getAlpha()
         self.active_flags = self.set_flags(iterations + 1)
 
-
+    print("proc 2")
     def getProbability(self):
         """ activation probabilities are same for subgraphs """
         return self.commBudget 

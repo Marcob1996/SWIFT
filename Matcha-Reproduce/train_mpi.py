@@ -57,7 +57,6 @@ def sync_allreduce(model, rank, size):
     return comm_t
 
 def run(rank, size):
-
     # set random seed
     torch.manual_seed(args.randomSeed+rank)
     np.random.seed(args.randomSeed)
@@ -68,18 +67,21 @@ def run(rank, size):
 
     # load base network topology
     subGraphs = util.select_graph(args.graphid)
-    
+
     # define graph activation scheme
     if args.matcha:
         GP = MatchaProcessor(subGraphs, args.budget, rank, size, args.epoch*num_batches, True)
     else:
-        GP = FixedProcessor(subGraphs, args.budget, rank, size, args.epoch*num_batches, True)
-
+        if not args.centralized:
+            GP = FixedProcessor(subGraphs, args.budget, rank, size, args.epoch*num_batches, True)
     # define communicator
     if args.compress:
         communicator = ChocoCommunicator(rank, size, GP, 0.9, args.consensus_lr)
+    elif args.centralized:
+        communicator = centralizedCommunicator(rank, size)
     else:
         communicator = decenCommunicator(rank, size, GP)
+
 
     # select neural network model
     model = util.select_model(10, args)
@@ -87,6 +89,7 @@ def run(rank, size):
     # split up GPUs                                                                                                                                              
     num_gpus =  torch.cuda.device_count()
     gpu_id = rank % num_gpus
+
     
     # initialize the GPU being used                                                                                                                              
     torch.cuda.set_device(gpu_id)
@@ -100,7 +103,7 @@ def run(rank, size):
                           nesterov=args.nesterov)
     
     # guarantee all local models start from the same point
-    # can be removed    
+    # can be removed   
     sync_allreduce(model, rank, size)
 
     # init recorder
@@ -114,6 +117,7 @@ def run(rank, size):
     # start training
     for epoch in range(args.epoch):
         model.train()
+  
 
         # Start training each epoch
         for batch_idx, (data, target) in enumerate(train_loader):
@@ -145,15 +149,18 @@ def run(rank, size):
             comp_time += d_comp_time
 
             # communication happens here
-            d_comm_time = communicator.communicate(model)
-            comm_time += d_comm_time
-
+            if not args.centralized:
+                d_comm_time = communicator.communicate(model)
+                comm_time += d_comm_time
+            else:
+                d_comm_time = 0 
+            print("I'm here!")
             gc.collect()
             del data, target, output, d_comm_time, d_comp_time
 
             #Marco comment out for now
             #print("batch_idx: %d, rank: %d, comp_time: %.3f, comm_time: %.3f,epoch time: %.3f " % (batch_idx+1,rank,d_comp_time, d_comm_time, comp_time+ comm_time), end='\r')
-
+                                   
         toc = time.time()
         record_time = toc - tic # time that includes anything
         epoch_time = comp_time + comm_time # only include important parts
@@ -229,6 +236,7 @@ if __name__ == "__main__":
     parser.add_argument('--matcha', action='store_true', help='use MATCHA or not')
     parser.add_argument('--budget', type=float, help='comm budget')
     parser.add_argument('--graphid', default=0, type=int, help='the idx of base graph')
+    parser.add_argument('--centralized', default=0, type=int, help='change to 1 if centralized FL is desired')
     
     parser.add_argument('--dataset', default='cifar10', type=str, help='the dataset')
     parser.add_argument('--datasetRoot', type=str, help='the path of dataset')

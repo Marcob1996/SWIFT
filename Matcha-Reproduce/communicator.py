@@ -47,7 +47,6 @@ class centralizedCommunicator(Communicator):
     """ Perform AllReduce at each iteration """
     def __init__(self, rank, size):
         super(centralizedCommunicator, self).__init__(rank, size)
-
     
     def prepare_comm_buffer(self):
         # faltten tensors
@@ -65,14 +64,43 @@ class centralizedCommunicator(Communicator):
         toc = time.time()
 
         return toc - tic
-
+   
     def reset_model(self):
         # Reset local models to be the averaged model
         for f, t in zip(unflatten_tensors(
                         self.recv_buffer.cuda(), self.tensor_list), 
                         self.tensor_list):
-            t.set_(f)
+            with torch.no_grad():
+                t.set_(f)
+    
+    def communicate(self, model):
+        # get activated topology at current iteration
+        #active_flags = self.topology.active_flags[self.iter]
+        #self.iter += 1
 
+        # if no subgraphs are activated,
+        # then directly start next iteration
+        #if np.sum(active_flags) == 0:
+        #    return 0
+
+        # stack all model parameters into one tensor list
+        self.tensor_list = list()
+        for param in model.parameters():
+            self.tensor_list.append(param.data)
+
+        # necessary preprocess
+        # there is an additional encoding time
+        encode_time = self.prepare_comm_buffer()
+
+        # decentralized averaging
+        # record the communication time
+        comm_time = self.averaging(active_flags)
+
+        # update local models
+        self.reset_model()
+
+        return encode_time + comm_time
+                
 class decenCommunicator(Communicator):
     """ decentralized averaging according to a topology sequence """
     def __init__(self, rank, size, topology):
