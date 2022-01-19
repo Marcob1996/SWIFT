@@ -283,7 +283,7 @@ def select_model(num_class, args):
 def select_graph(graphid):
     # pre-defined base network topologies
     # you can add more by extending the list
-    Graphs =[ 
+    Graphs =[
              # graph 0: 
              # 8-node erdos-renyi graph as shown in Fig. 1(a) in the main paper
              [[(1, 5), (6, 7), (0, 4), (2, 3)], 
@@ -342,8 +342,10 @@ def select_graph(graphid):
 
              # graph 5, 8-node ring
              [[(0, 1), (2, 3), (4, 5), (6, 7)], 
-              [(0, 7), (2, 1), (4, 3), (6, 5)]]
-
+              [(0, 7), (2, 1), (4, 3), (6, 5)]],
+        
+            # graph 6, 2-node simple graph
+             [[(0,1)]]
             ]
             
     return Graphs[graphid] 

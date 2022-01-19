@@ -85,8 +85,10 @@ class AsyncDecentralized:
     def communicate(self, model):
 
         if self.iter % self.sgd_updates == 0:
+            #Update local model.
             comm_time = self.averaging(model)
         else:
+            #Communicate local model. 
             comm_time = self.broadcast(model)
 
         self.iter += 1
