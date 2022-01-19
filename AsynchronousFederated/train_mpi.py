@@ -63,7 +63,7 @@ def run(rank, size):
     Graph = [(0, 1)]
 
     GP = GraphConstruct(Graph, rank, size)
-    sgd_steps = 3
+    sgd_steps = 2
     communicator = AsyncDecentralized(rank, size, GP, sgd_steps)
 
     # select neural network model
@@ -114,7 +114,7 @@ def run(rank, size):
             # record training loss and accuracy
             record_start = time.time()
             acc1 = util.comp_accuracy(output, target)
-            print(loss.item())
+            # print(loss.item())
             losses.update(loss.item(), data.size(0))
             top1.update(acc1[0].item(), data.size(0))
             record_end = time.time()
