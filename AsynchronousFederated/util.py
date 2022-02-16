@@ -387,6 +387,7 @@ class Recorder(object):
     def __init__(self, args, rank):
         self.record_accuracy = list()
         self.record_timing = list()
+        self.record_total_timing = list()
         self.record_comp_timing = list()
         self.record_comm_timing = list()
         self.record_losses = list()
@@ -399,9 +400,9 @@ class Recorder(object):
         #if rank == 0 and os.path.isdir(self.saveFolderName)==False and self.args.save:
         #    os.mkdir(self.saveFolderName)
             
-    def add_new(self,record_time,comp_time,comm_time,epoch_time,top1,losses,test_acc):
-        self.total_record_timing.append(record_time)
+    def add_new(self,comp_time,comm_time,epoch_time,total_time,top1,losses,test_acc):
         self.record_timing.append(epoch_time)
+        self.record_total_timing.append(total_time)
         self.record_comp_timing.append(comp_time)
         self.record_comm_timing.append(comm_time)
         self.record_trainacc.append(top1)
@@ -415,8 +416,8 @@ class Recorder(object):
         if not isExist:
             os.makedirs(subfolder)
 
-        np.savetxt(subfolder+'/dsgd-r'+str(self.rank)+'-recordtime.log', self.total_record_timing, delimiter=',')
-        np.savetxt(subfolder+'/dsgd-r'+str(self.rank)+'-time.log',  self.record_timing, delimiter=',')
+        np.savetxt(subfolder+'/dsgd-r'+str(self.rank)+'-epoch-time.log',  self.record_timing, delimiter=',')
+        np.savetxt(subfolder+'/dsgd-r'+str(self.rank)+'-total-time.log', self.record_total_timing, delimiter=',')
         np.savetxt(subfolder+'/dsgd-r'+str(self.rank)+'-comptime.log',  self.record_comp_timing, delimiter=',')
         np.savetxt(subfolder+'/dsgd-r'+str(self.rank)+'-commtime.log',  self.record_comm_timing, delimiter=',')
         np.savetxt(subfolder+'/dsgd-r'+str(self.rank)+'-losses.log',  self.record_losses, delimiter=',')
@@ -436,7 +437,6 @@ def test(model, test_loader):
     for batch_idx, (inputs, targets) in enumerate(test_loader):
         inputs, targets = inputs.cuda(non_blocking=True), targets.cuda(non_blocking=True)
         outputs = model(inputs)
-        print(outputs[0:10])
         acc1 = comp_accuracy(outputs, targets)
         top1.update(acc1[0], inputs.size(0))
     return top1.avg
