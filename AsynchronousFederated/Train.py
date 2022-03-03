@@ -113,9 +113,9 @@ def run(rank, size):
         experiment.log_metric("Total time in epoch", epoch_time)
 
         WORKER_COMM.Barrier()
-        init_time = time.time()
         # start training
         for epoch in range(args.epoch):
+            init_time = time.time()
             record_time = 0
             model.train()
 
@@ -156,7 +156,7 @@ def run(rank, size):
             update_learning_rate(optimizer, epoch, drop=0.75, epochs_drop=10.0, decay_epoch=20,
                                  itr_per_epoch=len(train_loader))
 
-            # send_start = time.time()
+            send_start = time.time()
             # send model to the dummy node to compute the overall model accuracy
             tensor_list = list()
             for param in model.parameters():
@@ -172,8 +172,14 @@ def run(rank, size):
             # evaluate test accuracy at the end of each epoch
             test_acc = util.test(model, test_loader)[0].item()
 
+            send_time = time.time() - send_start
+
             # evaluate validation accuracy at the end of each epoch
             val_acc = util.test(model, val_loader)[0].item()
+
+            # run personalization if turned on
+            if args.personalize and args.comm_style == 'async':
+                comm_time += communicator.personalize(test_acc, val_acc)
 
             # total time spent in algorithm
             comp_time -= record_time
@@ -182,13 +188,7 @@ def run(rank, size):
             print("rank: %d, epoch: %.3f, loss: %.3f, train_acc: %.3f, test_acc: %.3f, val_acc: %.3f, comp time: %.3f, "
                   "epoch time: %.3f" % (rank, epoch, losses.avg, top1.avg, test_acc, val_acc, comp_time, epoch_time))
 
-            # send_time = time.time() - send_start
-
-            # run personalization if turned on
-            if args.personalize and args.comm_style == 'async':
-                comm_time += communicator.personalize(test_acc, val_acc)
-
-            recorder.add_new(comp_time, comm_time, epoch_time, (time.time() - init_time),
+            recorder.add_new(comp_time, comm_time, epoch_time, (time.time() - init_time) - send_time,
                              top1.avg, losses.avg, test_acc, val_acc)
 
             # reset recorders
